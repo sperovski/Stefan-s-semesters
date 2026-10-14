@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+<head>
+    <title>Ski Slope List</title>
+</head>
+<body>
+
+<div>
+    <!-- The form below should invoke the method SkiSlopeController.listAll -->
+    <form id="filter-form">
+        <label for="name">Slope Name</label>
+        <input id="name" type="text" name="name"/>
+
+        <label for="length">Slope Length (in meters)</label>
+        <input id="length" type="number" name="length"/>
+
+        <label for="difficulty">Slope Difficulty</label>
+        <select id="difficulty" name="difficulty">
+            <option th:value="${null}">All</option>
+            <!-- For each SlopeDifficulty you should have one <option> like below  -->
+            <option th:each="diff : ${difficulties}"
+                    th:value="${diff}"
+                    th:text="${diff}"
+                    th:selected="${diff != null && difficulty == diff}">
+            </option>
+        </select>
+
+        <label for="skiResort">Ski Resort</label>
+        <select id="skiResort" name="skiResort">
+            <option th:value="${null}">All</option>
+            <option th:each="res : ${resorts}"
+                    th:value="${res.getId()}"
+                    th:text="${res.getId()}"
+                    th:selected="${res != null && skiResort == res}">
+            </option>
+        </select>
+
+        <button id="filter" type="submit">Filter</button>
+    </form>
+
+    <th:block sec:authorize="hasRole('ADMIN')">
+        <div>
+            <!-- SkiSlopeController.showAdd -->
+            <a th:href="@{/add}" class="add-item">Add new ski slope</a>
+        </div>
+    </th:block>
+
+    <table>
+        <tr>
+            <th>Slope Name</th>
+            <th>Length</th>
+            <th>Difficulty</th>
+            <th>Ski Resort</th>
+            <th>Open/Closed</th>
+            <th>Actions</th>
+        </tr>
+        <!-- For each ski slope you should have one <tr> like below -->
+        <tr th:each="slope : ${slopes}" class="item">
+            <td th:text="${slope.name}"></td>
+            <td th:text="${slope.length}"></td>
+            <td th:text="${slope.skiResort != null} ? ${slope.skiResort.name} : 'No Manufacturer'"></td>
+            <td th:text="${slope.isClosed() ? 'CLOSED' : 'OPEN'}"></td>
+            <td>
+                <th:block sec:authorize="hasRole('ADMIN')" th:if="${!slope.isClosed()}">
+                    <a th:href="@{${'/ski-slopes/edit/' + slope.getId()}}" class="edit-item">Edit</a>
+                    <form method="post" th:action="@{${'/ski-slopes/delete/' + slope.getId()}}">
+                        <button type="submit" class="delete-item">Delete</button>
+                    </form>
+                    <form method="post" th:action="@{${'/ski-slopes/close/' + slope.getId()}}">
+                        <button type="submit" class="close-item" th:text="${slope.isClosed() ? 'CLOSED' : 'Close'}">Close</button>
+                    </form>
+                </th:block>
+                <th:block th:if="${slope.isClosed()}">
+                    <button type="submit" class="close-item" th:text="${'CLOSED'}">Close</button>
+                </th:block>
+
+
+            </td>
+        </tr>
+    </table>
+
+</div>
+<div>
+    <ul id="nav">
+        <li><a href="/">Home</a></li>
+        <li><a href="/login">Login</a></li>
+        <li><a href="/logout">Logout</a></li>
+    </ul>
+</div>
+<div class="row">
+    <div class="col-8">
+        <nav aria-label="Page navigation">
+            <ul class="pagination">
+                <li class="cursor-pointer page-item" th:classappend="${page.isFirst()} ? 'disabled' : ''">
+                    <a class="page-link" href="#" onClick="updateQueryStringParameter('pageNum', 1)">First</a>
+                </li>
+                <li class="page-item" th:classappend="${page.hasPrevious()} ? '': 'disabled'">
+                    <a class="page-link" href="#"
+                       onClick="updateQueryStringParameter('pageNum', this.getAttribute('page-number'))"
+                       th:page-number="${page.number}">Previous</a>
+                </li>
+                <li th:each="pageNum : ${#numbers.sequence(T(java.lang.Math).max(1,page.number-5), (page.totalPages == 0? 1: T(java.lang.Math).min(page.totalPages,page.number+5)))}"
+                    th:class="${page.number+1 == pageNum} ? 'page-item active' : 'page-item'">
+                    <a class="page-link" href="#"
+                       onClick="updateQueryStringParameter('pageNum', this.getAttribute('page-number'))"
+                       th:page-number="${pageNum}" th:text="${pageNum}"></a>
+                </li>
+                <li class="page-item" th:classappend="${page.hasNext()} ? '': 'disabled'">
+                    <a class="page-link" href="#"
+                       onClick="updateQueryStringParameter('pageNum', this.getAttribute('page-number'))"
+                       th:page-number="${page.number+2}">Next</a>
+                </li>
+                <li class="page-item" th:classappend="${page.isLast()} ? 'disabled' : ''">
+                    <a class="page-link" href="#"
+                       onClick="updateQueryStringParameter('pageNum', this.getAttribute('page-number'))"
+                       th:page-number="${page.totalPages}">Last</a>
+
+                </li>
+            </ul>
+        </nav>
+    </div>
+
+    <div class="col-4">
+        <div class="d-flex align-items-center mb-3">
+            <label for="results" class="mr-2 mb-0">Results by page: </label>
+
+            <select id="results" class="form-control custom-select" style="max-width: 100px;"
+                    onchange="updateQueryStringParameter('pageSize',this.value)">
+                <option value="10" th:selected="${page.size == 10}">10</option>
+                <option value="20" th:selected="${page.size == 20}">20</option>
+                <option value="50" th:selected="${page.size == 50}">50</option>
+                <option value="100" th:selected="${page.size == 100}">100</option>
+                <option value="1000" th:selected="${page.size == 1000}">1000</option>
+            </select>
+            <span class="ms-1 me-1"> / Total: </span>
+            <b class="ms-1" th:text="${page.totalElements}"></b>
+        </div>
+    </div>
+</div>
+
+</body>
+<script th:inline="javascript">
+    function updateQueryStringParameter(key, value) {
+        var uri = window.location.href;
+        var re = new RegExp("([?&])" + key + "=.*?(&|$)", "i");
+        var separator = uri.indexOf('?') !== -1 ? "&" : "?";
+        if (uri.match(re)) {
+            uri = uri.replace(re, '$1' + key + "=" + value + '$2');
+        } else {
+            uri = uri + separator + key + "=" + value;
+        }
+        window.location = uri;
+    }
+</script>
+</html>
